@@ -112,7 +112,7 @@ public:
 
         // --- CONTROL DEL TIEMPO DE INVENCIBILIDAD (COLOR AZUL) ---
         if (invencible) {
-            if (relojInvencibilidad.getElapsedTime().asSeconds() > 8.0f) {
+            if (relojInvencibilidad.getElapsedTime().asSeconds() > 4.0f) {
                 invencible = false;
                 sprite.setColor(sf::Color::White); // Regresa a su color normal
             } else {
