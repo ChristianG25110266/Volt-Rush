@@ -10,27 +10,20 @@ private:
 
     sf::Clock relojAnimacion; 
     int frameActual;
-    int anchoFrame;
-    int altoFrame;
-    int yFilaCaminando;
-    int xInicial;
-    int separacion;
     float escalaPikachu;
+
+    sf::IntRect framesCaminando[4]; 
 
     int direccion; 
     bool espacioPresionadoAnterior;
 
-    // --- SISTEMA DE VIDAS ---
     int vidas;
     int vidasMaximas;
     sf::Texture texturaCorazon;
     sf::Sprite spriteCorazon;
 
-    // --- SISTEMA DE PUNTOS ---
     int puntuacion;
     int multiplicador;
-
-    // --- NUEVO: INVENCIBILIDAD ---
     bool invencible;
     sf::Clock relojInvencibilidad;
 
@@ -41,18 +34,26 @@ public:
         }
         sprite.setTexture(textura, true);
 
-        anchoFrame = 32;     
-        altoFrame = 35;      
-        yFilaCaminando = 82; 
-        xInicial = 2;        
-        separacion = 0;      
+        // --- DEFINICIÓN EXACTA DE LOS CUADROS ---
+        framesCaminando[0] = sf::IntRect({26, 78}, {37, 33}); 
+        framesCaminando[1] = sf::IntRect({65, 78}, {39, 35}); 
+        
+        // Cuadros vacíos temporales (no se usarán hasta que los midas)
+        framesCaminando[2] = sf::IntRect({0, 0}, {0, 0});     
+        framesCaminando[3] = sf::IntRect({0, 0}, {0, 0});     
+
         frameActual = 0;
         escalaPikachu = 2.0f; 
 
-        sprite.setTextureRect(sf::IntRect({xInicial, yFilaCaminando}, {anchoFrame, altoFrame}));
-        sprite.setOrigin({anchoFrame / 2.0f, altoFrame / 2.0f});
-        sprite.setPosition({400.f, 500.f}); 
+        sprite.setTextureRect(framesCaminando[0]);
         
+        // Origen dinámico con sintaxis de SFML 3 (.size.x / .size.y)
+        sprite.setOrigin(sf::Vector2f(framesCaminando[0].size.x / 2.0f, framesCaminando[0].size.y / 2.0f));
+        sprite.setPosition(sf::Vector2f(400.f, 500.f)); 
+        
+        // --- CORRECCIÓN: Aplicar la escala desde el inicio ---
+        sprite.setScale(sf::Vector2f(escalaPikachu, escalaPikachu));
+
         velocidad = 5.0f; 
         direccion = 1; 
         espacioPresionadoAnterior = false;
@@ -64,11 +65,10 @@ public:
             std::cout << "Error al cargar la imagen del corazon.\n";
         }
         spriteCorazon.setTexture(texturaCorazon, true);
-        spriteCorazon.setScale({0.08f, 0.08f}); 
+        spriteCorazon.setScale(sf::Vector2f(0.08f, 0.08f)); 
 
         puntuacion = 0;
         multiplicador = 1; 
-        
         invencible = false; 
     }
 
@@ -80,58 +80,63 @@ public:
         espacioPresionadoAnterior = espacioPresionado; 
 
         float posX = sprite.getPosition().x;
-        float mitadAnchoEscalado = (anchoFrame * escalaPikachu) / 2.0f;
+        
+        float mitadAnchoEscalado = (framesCaminando[frameActual].size.x * escalaPikachu) / 2.0f;
         bool seEstaMoviendo = false; 
 
         if (direccion == 1) { 
             if (posX + mitadAnchoEscalado < 800) {
-                sprite.move({velocidad, 0.f});
+                sprite.move(sf::Vector2f(velocidad, 0.f));
                 seEstaMoviendo = true;
             }
-            sprite.setScale({escalaPikachu, escalaPikachu}); 
+            sprite.setScale(sf::Vector2f(escalaPikachu, escalaPikachu)); 
         } else { 
             if (posX - mitadAnchoEscalado > 0) {
-                sprite.move({-velocidad, 0.f});
+                sprite.move(sf::Vector2f(-velocidad, 0.f));
                 seEstaMoviendo = true;
             }
-            sprite.setScale({-escalaPikachu, escalaPikachu}); 
+            sprite.setScale(sf::Vector2f(-escalaPikachu, escalaPikachu)); 
         }
 
         if (seEstaMoviendo) {
-            if (relojAnimacion.getElapsedTime().asSeconds() > 0.1f) {
+            if (relojAnimacion.getElapsedTime().asSeconds() > 0.15f) {
                 frameActual++; 
-                if (frameActual > 3) { frameActual = 0; }
-                int xRecorte = xInicial + (frameActual * (anchoFrame + separacion));
-                sprite.setTextureRect(sf::IntRect({xRecorte, yFilaCaminando}, {anchoFrame, altoFrame}));
+                
+                // --- CORRECCIÓN: Solo iterar entre los 2 cuadros medidos (0 y 1) para evitar parpadeo ---
+                if (frameActual > 1) { frameActual = 0; } 
+                
+                sprite.setTextureRect(framesCaminando[frameActual]);
+                
+                // Actualizamos el centro dinámicamente para evitar temblores
+                sprite.setOrigin(sf::Vector2f(framesCaminando[frameActual].size.x / 2.0f, framesCaminando[frameActual].size.y / 2.0f));
+                
                 relojAnimacion.restart(); 
             }
         } else {
-            frameActual = 0;
-            sprite.setTextureRect(sf::IntRect({xInicial, yFilaCaminando}, {anchoFrame, altoFrame}));
+            if (frameActual != 0) {
+                frameActual = 0;
+                sprite.setTextureRect(framesCaminando[0]);
+                sprite.setOrigin(sf::Vector2f(framesCaminando[0].size.x / 2.0f, framesCaminando[0].size.y / 2.0f));
+            }
         }
 
-        // --- CONTROL DEL TIEMPO DE INVENCIBILIDAD (COLOR AZUL) ---
         if (invencible) {
             if (relojInvencibilidad.getElapsedTime().asSeconds() > 4.0f) {
                 invencible = false;
-                sprite.setColor(sf::Color::White); // Regresa a su color normal
+                sprite.setColor(sf::Color::White); 
             } else {
-                sprite.setColor(sf::Color::Cyan); // Efecto visual: Color Azul brillante
+                sprite.setColor(sf::Color::Cyan); 
             }
         }
     }
 
     void perderVida() {
-        if (vidas > 0) {
-            vidas--; 
-        }
+        if (vidas > 0) vidas--; 
         multiplicador = 1; 
     }
 
     void ganarVida() {
-        if (vidas < vidasMaximas) {
-            vidas++; 
-        }
+        if (vidas < vidasMaximas) vidas++; 
     }
 
     bool estaVivo() { return vidas > 0; }
@@ -140,11 +145,10 @@ public:
         puntuacion += (puntosBase * multiplicador);
     }
     
-    // Función que se llama cuando agarras el Power-Up
     void activarPowerUp() { 
         multiplicador = 2;       
         invencible = true;       
-        relojInvencibilidad.restart(); // Inicia la cuenta de 8 segundos
+        relojInvencibilidad.restart(); 
     }
     
     int getPuntuacion() { return puntuacion; }
@@ -153,9 +157,8 @@ public:
 
     void dibujar(sf::RenderWindow& ventana) {
         ventana.draw(sprite); 
-
         for (int i = 0; i < vidas; i++) {
-            spriteCorazon.setPosition({15.f + (i * 40.f), 15.f});
+            spriteCorazon.setPosition(sf::Vector2f(15.f + (i * 40.f), 15.f));
             ventana.draw(spriteCorazon);
         }
     }
